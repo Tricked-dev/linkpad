@@ -16,6 +16,9 @@ devDependencies:
   '@fontsource/lato':
     specifier: ^5.0.18
     version: 5.0.18
+  '@iconify/json':
+    specifier: ^2.2.160
+    version: 2.2.160
   '@sveltejs/vite-plugin-svelte':
     specifier: 3.0.0-next.3
     version: 3.0.0-next.3(svelte@5.0.0-next.26)(vite@4.4.4)
@@ -619,6 +622,13 @@ packages:
 
   /@fontsource/lato@5.0.18:
     resolution: {integrity: sha512-lJa0f4MPXtHsZsLz37wo7d4m5odfOdwCNRg0IjV06ri/fIPypJLEuUB12oWCJ38DDD/XhKVSQPo8BWV8CRBhzQ==}
+    dev: true
+
+  /@iconify/json@2.2.160:
+    resolution: {integrity: sha512-mjVikrD2ohux47NDrG22qzVBIf0BGS3W4HUZO3d+dnk7Sk3AYrmWVsGiMW6aoSGrBMIKAXpkLqCqgu57eu1oIw==}
+    dependencies:
+      '@iconify/types': 2.0.0
+      pathe: 1.1.1
     dev: true
 
   /@iconify/types@2.0.0:
