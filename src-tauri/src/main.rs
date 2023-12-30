@@ -10,55 +10,16 @@ use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum ButtonData {
-    TextButton {
-        text: String,
-        auto_size: bool,
-        text_size: isize,
-        #[serde(rename = "type")]
-        b_type: ButtonType<0>,
-    },
-    // icon is retrieved from seprate ws messages
-    IconButton {
-        #[serde(rename = "type")]
-        b_type: ButtonType<1>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Button {
-    #[serde(flatten)]
-    data: ButtonData,
-    action: String,
-    id: Uuid,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PanelData {
-    id: Uuid,
-    name: String,
-    buttons: Vec<Vec<Button>>,
-}
-#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
 pub enum SendMessages {
-    Panels { data: Vec<PanelData> },
+    Data { data: Vec<serde_json::Value> },
     IconData { id: Uuid, data: Base64 },
 }
-
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
 pub enum ReceiveMessages {
-    UpdatePanel { data: PanelData },
-    UpdateIcon { id: Uuid, data: Base64 },
-    UpdateButton { id: Uuid, data: Button },
-
-    DeleteButton { id: Uuid },
-    DeletePanel { id: Uuid },
-
-    CreatePanel { data: PanelData },
-    CreateButton { data: Button, row: usize },
-
-    SetActivePanel { id: Uuid },
+    UpsertIcon { id: Uuid, data: Base64 },
+    UpdatePanels { data: Vec<serde_json::Value> },
 }
 
 #[derive(Debug)]
@@ -125,74 +86,77 @@ fn main() -> color_eyre::Result<()> {
 }
 
 pub struct LibraryInfo {
-    panels: Vec<PanelData>,
+    panels: Vec<serde_json::Value>,
     icons: Vec<(Uuid, Vec<u8>)>,
 }
 
-impl LibraryInfo {
-    pub fn get_panel(&mut self, id: Uuid) -> Option<&mut PanelData> {
-        self.panels.iter_mut().find(|p| p.id == id)
-    }
-}
-
 mod rocky {
-    use rocket::{get, launch, routes};
+    use color_eyre::owo_colors::OwoColorize;
+    use rocket::{futures::stream::iter, get, launch, routes};
+    use serde_json::json;
     use uuid::Uuid;
+    use ws::{stream, Message};
 
-    use crate::{Button, LibraryInfo, PanelData, ReceiveMessages};
+    use crate::{Base64, LibraryInfo, ReceiveMessages, SendMessages};
 
-    #[get("/echo")]
-    fn echo_channel(ws: ws::WebSocket) -> ws::Channel<'static> {
+    #[get("/connect")]
+    fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
         use rocket::futures::{SinkExt, StreamExt};
 
         let mut library = LibraryInfo {
-            panels: vec![PanelData {
-                buttons: vec![
-                    vec![Button {
-                        action: "mute".to_owned(),
-                        data: crate::ButtonData::TextButton {
-                            text: "123".to_owned(),
-                            auto_size: true,
-                            text_size: 20,
-                            b_type: crate::ButtonType,
-                        },
-                        id: Uuid::new_v4(),
-                    }],
-                    vec![],
-                ],
-                id: Uuid::new_v4(),
-                name: "test".to_string(),
-            }],
+            panels: vec![json!({
+                "buttons": [
+                    [
+                        {
+                            "action": "mute",
+                            "text": "123",
+                            "autoSize": true,
+                            "textSize": 20,
+                            "type": 1,
+                            "id": Uuid::new_v4(),
+                        }
+                    ]
+                    ],
+                "id": Uuid::new_v4(),
+                "name": "test",
+            })],
             icons: vec![],
         };
 
-        let active_panel = library.panels[0].id;
-
         ws.channel(move |mut stream| {
             Box::pin(async move {
+                stream
+                    .send(Message::Text(
+                        serde_json::to_string_pretty(&SendMessages::Data {
+                            data: library.panels.clone(),
+                        })
+                        .unwrap(),
+                    ))
+                    .await
+                    .unwrap();
+                let mut st = iter(library.icons.clone().into_iter().map(|(id, data)| {
+                    Ok(Message::Text(
+                        serde_json::to_string_pretty(&SendMessages::IconData {
+                            id,
+                            data: Base64(data.clone()),
+                        })
+                        .unwrap(),
+                    ))
+                }));
+                stream.send_all(&mut st).await.unwrap();
+
                 while let Some(message) = stream.next().await {
                     if let Ok(t) = message {
                         let msg: ReceiveMessages = serde_json::from_str(t.to_text()?).unwrap();
 
                         match msg {
-                            ReceiveMessages::UpdatePanel { data } => {
-                                if let Some(index) =
-                                    library.panels.iter().position(|item| item.id == data.id)
-                                {
-                                    // Replace the item at the found index with the replacement item
-                                    library.panels[index] = data;
-                                }
+                            ReceiveMessages::UpdatePanels { data } => {
+                                library.panels = data;
                             }
-                            ReceiveMessages::UpdateButton { id, data } => {}
-                            ReceiveMessages::UpdateIcon { id, data } => {}
-
-                            ReceiveMessages::CreateButton { data, row } => {
-                                library.get_panel(active_panel).unwrap().buttons[row].push(data);
+                            ReceiveMessages::UpsertIcon { id, data } => {
+                                library.icons.retain(|x| x.0 != id);
+                                library.icons.push((id, data.0));
                             }
-                            ReceiveMessages::CreatePanel { data } => {
-                                library.panels.push(data);
-                            }
-                            _ => {}
                         }
                     }
                 }
@@ -203,6 +167,6 @@ mod rocky {
     }
     #[launch]
     pub fn rocket() -> _ {
-        rocket::build().mount("/", routes![echo_channel])
+        rocket::build().mount("/", routes![connect])
     }
 }

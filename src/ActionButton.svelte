@@ -1,17 +1,25 @@
 <script lang="ts">
-  let { data, css, edit, open } = $props<{
-    data: any;
-    css: string;
-    edit: boolean;
-    open: boolean;
-  }>();
+  import { crossfade, fade, fly, blur, scale } from "svelte/transition";
 
+  let {
+    data,
+    edit,
+    onEdit,
+    preview = false,
+  } = $props<{
+    data: any;
+    edit: boolean;
+    onEdit: () => void;
+    preview?: boolean;
+  }>();
+  let container: HTMLButtonElement | undefined = $state();
   let txt: HTMLSpanElement | undefined = $state();
 
   function isOverflowing() {
+    console.log(txt!.scrollWidth, txt!.clientWidth);
     return (
-      txt!.scrollWidth > txt!.clientWidth ||
-      txt!.scrollHeight > txt!.clientHeight
+      txt!.scrollWidth > container!.clientWidth ||
+      txt!.scrollHeight > container!.clientHeight
     );
   }
 
@@ -20,9 +28,10 @@
     let defaultFontSize = 30;
 
     do {
+      console.log(defaultFontSize);
       defaultFontSize--;
       txt.style.fontSize = `${defaultFontSize}cqi`;
-    } while (isOverflowing() && defaultFontSize > 10);
+    } while (isOverflowing() && defaultFontSize > 5);
   }
 
   let text = $derived(data.text);
@@ -35,24 +44,33 @@
 </script>
 
 <button
-  class="{css} overflow-hidden flex [container-type:inline-size]"
+  bind:this={container}
+  class="rounded-24px bg-surface-200/30 backdrop-blur-4 p-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center overflow-hidden flex [container-type:inline-size]"
   id="{data.id}-btn"
 >
   {#if edit}<div
-      onclick={() => (open = true)}
+      onclick={onEdit}
       class="i-mdi-gear text-2xl absolute top-2 right-2 rounded-lg hover:bg-primary-500"
     ></div>{/if}
-  {#if data.autoSize}
-    <span bind:this={txt} class="text-center m-auto w-full" id="{data.id}-txt">
-      {data.text}
-    </span>
-  {:else}
-    <span
-      style:font-size="{data.textSize}px"
-      style:line-height="{data.textSize}px"
-      class="text-center my-auto mx-auto"
+  {#key data.text}
+    <div
+      bind:this={txt}
+      in:scale={{ duration: preview ? 0 : 500, delay: preview ? 0 : 200 }}
+      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
     >
-      {data.text}
-    </span>
-  {/if}
+      {#if data.autoSize}
+        <span class="text-center m-auto w-full">
+          {data.text}
+        </span>
+      {:else}
+        <span
+          style:font-size="{data.textSize}px"
+          style:line-height="{data.textSize}px"
+          class="text-center my-auto mx-auto"
+        >
+          {data.text}
+        </span>
+      {/if}
+    </div>
+  {/key}
 </button>

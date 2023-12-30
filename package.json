@@ -17,7 +17,8 @@
     "@unocss/core": "^0.58.0",
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.1.2",
-    "unocss-preset-scrollbar": "^0.3.0"
+    "unocss-preset-scrollbar": "^0.3.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@fontsource/lato": "^5.0.18",

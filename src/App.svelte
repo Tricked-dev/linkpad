@@ -7,72 +7,53 @@
   import Checkbox from "./Checkbox.svelte";
   import ActionButton from "./ActionButton.svelte";
   import IconPicker from "./IconPicker.svelte";
-
-  const css =
-    "rounded-24px bg-surface-200/30 backdrop-blur-4 p-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center";
+  import CreateButtonDialog from "./CreateButtonDialog.svelte";
+  import { type AnyButton, DisplayType, type Info } from "./types";
+  import { fly } from "svelte/transition";
+  import { randomUUID } from "./utils";
 
   const edit = true;
-  let open = $state(true);
-  let checked = $state(true);
 
-  const enum DisplayType {
-    ICON = 0,
-    TEXT = 1,
-  }
+  let info: Info | undefined = $state();
+  let active: string | undefined = $state();
 
-  type TextButton = {
-    type: DisplayType.TEXT;
-    autoSize: boolean;
-    text: string;
-    textSize?: number;
-  };
-  type IconButton = {
-    type: DisplayType.ICON;
-    icon: string;
-  };
+  let activeBoard = $derived(info?.find((x) => x.id == active));
 
-  type AnyButton = Omit<Partial<TextButton> & Partial<IconButton>, "type"> & {
-    type: DisplayType;
-    id: string;
-  };
+  let open = $state(false);
 
-  const buttonOption: AnyButton = $state({
+  let onCancel: () => void = $state(() => {});
+  let onSubmit: () => void = $state(() => {});
+
+  let buttonOption: AnyButton = $state({
     type: DisplayType.ICON,
     id: "123",
   });
 
-  $effect(() => {
-    if (checked) {
-      buttonOption.type = DisplayType.ICON;
-    } else {
-      buttonOption.type = DisplayType.TEXT;
-    }
+  let ws: WebSocket | undefined = $state();
+
+  onMount(() => {
+    ws = new WebSocket("ws://127.0.0.1:8000/connect");
+
+    ws.onmessage = (m) => {
+      const res = JSON.parse(m.data);
+      if (res.type == "Data") {
+        console.log(res.data);
+        info = res.data;
+        active = info![0].id;
+      }
+    };
   });
 
-  function b(text: string): AnyButton {
-    return {
-      id: "123",
-      type: DisplayType.TEXT,
-      autoSize: true,
-      text: text,
-    };
-  }
-
-  const data: AnyButton[][] = [
-    [b("btn 1"), b("MUTE"), b("Some cool action")],
-    [b("Other"), b("Things"), b("DIE"), b("Download NOW")],
-    [b("This row"), b("Is kinda empty")],
-    [b("btn 4"), b("btn 5"), b("btn 6"), b("btn 7")],
-    [
-      b("Scrolley"),
-      b("Scroll"),
-      b("scroll"),
-      b("scroll"),
-      b("scroll"),
-      b("scroll"),
-      b("scroll"),
-    ],
-  ];
+  $effect(() => {
+    if (ws?.readyState !== ws?.CONNECTING) {
+      ws?.send(
+        JSON.stringify({
+          type: "UpdatePanels",
+          data: info,
+        }),
+      );
+    }
+  });
 </script>
 
 <main
@@ -87,63 +68,55 @@
   </div>
 
   <div class="p-4 flex flex-col gap-4 w-auto">
-    {#each data as row}
-      <div class="flex gap-4">
-        {#each row as item}
-          <ActionButton {css} data={item} bind:open {edit} />
+    {#each activeBoard?.buttons || [] as row, rowIdx}
+      <div class="flex gap-4" in:fly={{ y: -100, duration: 500 }}>
+        {#each row as item, itemIdx}
+          <div in:fly={{ x: -100, duration: 500 }}>
+            <ActionButton
+              data={item}
+              onEdit={() => {
+                open = true;
+                buttonOption = { ...item };
+                onCancel = () => {};
+                onSubmit = () => {
+                  activeBoard!.buttons[rowIdx].splice(itemIdx, 1, buttonOption);
+                };
+              }}
+              {edit}
+            />
+          </div>
         {/each}
-        {#if edit}<button class={`${css} border-tertiary-500 border-4`}>
+        {#if edit}<button
+            class={`rounded-24px bg-surface-200/30 backdrop-blur-4 p-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center border-tertiary-500 border-4`}
+            onclick={() => {
+              open = true;
+              buttonOption = {
+                type: DisplayType.ICON,
+                id: randomUUID(),
+              };
+              onCancel = () => {};
+              onSubmit = () => {
+                activeBoard?.buttons[rowIdx].push(buttonOption);
+              };
+            }}
+          >
             <div class="i-mdi-plus text-9xl"></div>
           </button>{/if}
       </div>
     {/each}
+    {#if edit}<button
+        class={`text-white`}
+        onclick={() => {
+          activeBoard?.buttons.push([]);
+        }}
+      >
+        <div class="i-mdi-plus text-2xl px-6 border-primary-500 border-2"></div>
+      </button>{/if}
   </div>
-  <Dialog bind:open title="Edit Button! ">
-    <div class="h-110 w-100">
-      <div class="flex gap-2">
-        <span>ICON</span>
-        <Toggle bind:checked />
-        <span>TEXT</span>
-      </div>
-      <IconPicker />
-      {#if buttonOption.type === DisplayType.ICON}
-        <div class="p-2 grid grid-cols-2 gap-2">
-          <Input
-            class="col-span-2"
-            name="buttontext"
-            placeholder="Button Text"
-            bind:value={buttonOption.text}
-          />
-          <Checkbox
-            id="autosize"
-            bind:checked={buttonOption.autoSize}
-            label="Autosize"
-          />
-          {#if !buttonOption.autoSize}
-            <label>
-              Text Size
-              <input
-                type="range"
-                bind:value={buttonOption.textSize}
-                min="10"
-                max="200"
-              />
-            </label>
-          {/if}
-        </div>
-      {:else}
-        <div class="p-2">
-          <Button text="Select Icon" />
-        </div>
-      {/if}
-      <span class="text-xl font-bold"> Select Action </span>
-      <div class="p-2">
-        <Button text="Browse" />
-        <span> Increase Volume </span>
-      </div>
-      <div class="flex justify-center items-center mt-10">
-        <ActionButton {css} data={buttonOption} {open} {edit} />
-      </div>
-    </div>
-  </Dialog>
+  <CreateButtonDialog
+    bind:open
+    bind:data={buttonOption}
+    {onCancel}
+    {onSubmit}
+  />
 </main>
