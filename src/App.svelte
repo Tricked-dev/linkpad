@@ -11,6 +11,7 @@
   import { type AnyButton, DisplayType, type Info } from "./types";
   import { fly } from "svelte/transition";
   import { randomUUID } from "./utils";
+  import { ws } from "./ws.svelte";
 
   const edit = true;
 
@@ -29,29 +30,17 @@
     id: "123",
   });
 
-  let ws: WebSocket | undefined = $state();
-
   onMount(() => {
-    ws = new WebSocket("ws://127.0.0.1:8000/connect");
-
-    ws.onmessage = (m) => {
-      const res = JSON.parse(m.data);
-      if (res.type == "Data") {
-        console.log(res.data);
-        info = res.data;
-        active = info![0].id;
-      }
+    ws.connect();
+    ws.on.data = (res) => {
+      info = res.data;
+      active = info![0].id;
     };
   });
 
   $effect(() => {
-    if (ws?.readyState !== ws?.CONNECTING) {
-      ws?.send(
-        JSON.stringify({
-          type: "UpdatePanels",
-          data: info,
-        }),
-      );
+    if (ws?.state !== "CLOSED" && info) {
+      ws?.send("UpdatePanels", info);
     }
   });
 </script>

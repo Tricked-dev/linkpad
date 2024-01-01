@@ -5,7 +5,7 @@
     value,
     class: clazz,
     ...props
-  } = $props<HTMLInputAttributes & { value: string }>();
+  } = $props<HTMLInputAttributes & { value: string | undefined }>();
 </script>
 
 <input

@@ -13,16 +13,16 @@ use uuid::Uuid;
 #[serde(tag = "type")]
 pub enum SendMessages {
     Data { data: Vec<serde_json::Value> },
-    IconData { id: Uuid, data: Base64 },
+    IconData { data: Icon },
 }
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum ReceiveMessages {
-    UpsertIcon { id: Uuid, data: Base64 },
+    UpsertIcon { data: Icon },
     UpdatePanels { data: Vec<serde_json::Value> },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Base64(Vec<u8>);
 impl Serialize for Base64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -84,10 +84,16 @@ fn main() -> color_eyre::Result<()> {
 
     Ok(())
 }
-
+#[derive(Debug, Clone)]
 pub struct LibraryInfo {
     panels: Vec<serde_json::Value>,
-    icons: Vec<(Uuid, Vec<u8>)>,
+    icons: Vec<Icon>,
+}
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Icon {
+    pub id: Uuid,
+    pub data: Base64,
+    pub content_type: String,
 }
 
 mod rocky {
@@ -134,31 +140,41 @@ mod rocky {
                     ))
                     .await
                     .unwrap();
-                let mut st = iter(library.icons.clone().into_iter().map(|(id, data)| {
+                let mut st = iter(library.icons.clone().into_iter().map(|icon| {
                     Ok(Message::Text(
-                        serde_json::to_string_pretty(&SendMessages::IconData {
-                            id,
-                            data: Base64(data.clone()),
-                        })
-                        .unwrap(),
+                        serde_json::to_string_pretty(&SendMessages::IconData { data: icon })
+                            .unwrap(),
                     ))
                 }));
                 stream.send_all(&mut st).await.unwrap();
 
                 while let Some(message) = stream.next().await {
                     if let Ok(t) = message {
+                        dbg!(&t.to_text()?);
                         let msg: ReceiveMessages = serde_json::from_str(t.to_text()?).unwrap();
 
                         match msg {
                             ReceiveMessages::UpdatePanels { data } => {
                                 library.panels = data;
                             }
-                            ReceiveMessages::UpsertIcon { id, data } => {
-                                library.icons.retain(|x| x.0 != id);
-                                library.icons.push((id, data.0));
+                            ReceiveMessages::UpsertIcon { data } => {
+                                library.icons.retain(|x| x.id != data.id);
+                                library.icons.push(data.clone());
+
+                                stream
+                                    .send(Message::Text(
+                                        serde_json::to_string_pretty(&SendMessages::IconData {
+                                            data,
+                                        })
+                                        .unwrap(),
+                                    ))
+                                    .await
+                                    .unwrap();
                             }
                         }
                     }
+
+                    dbg!(&library);
                 }
 
                 Ok(())
