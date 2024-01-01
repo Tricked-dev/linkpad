@@ -47,7 +47,7 @@
 
 <button
   bind:this={container}
-  class="rounded-24px bg-surface-200/30 backdrop-blur-4 p-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center overflow-hidden flex [container-type:inline-size]"
+  class="rounded-24px bg-surface-200/30 backdrop-blur-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center overflow-hidden flex [container-type:inline-size]"
   id="{data.id}-btn"
 >
   {#if edit}<div
@@ -78,6 +78,11 @@
       </div>
     {/key}
   {:else if data.type === DisplayType.ICON}
-    <img src={getIcon(data.id)?.url} alt="kys" />
+    <img
+      in:scale={{ duration: preview ? 0 : 500, delay: preview ? 0 : 200 }}
+      src={getIcon(data.id)?.url}
+      alt="No icon loaded"
+      class="w-full h-full object-contain cursor-events-none"
+    />
   {/if}
 </button>

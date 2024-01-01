@@ -21,6 +21,14 @@
 
   let checked = $state(false);
 
+  let iconId = $derived(data?.id);
+
+  $effect(() => {
+    untrack(() => {
+      checked = data.type === DisplayType.ICON;
+    });
+  });
+
   $effect(() => {
     if (checked) {
       data.type = DisplayType.TEXT;
@@ -117,9 +125,8 @@
     <div class="flex justify-center items-center mt-10">
       <ActionButton {data} onEdit={() => {}} preview edit={false} />
     </div>
-
-    <button
-      on:click={() => {
+    <Button
+      onclick={() => {
         untrack(() => {
           submitted = true;
         });
@@ -128,7 +135,8 @@
         untrack(() => {
           submitted = false;
         });
-      }}>SUBMIT</button
-    >
+      }}
+      text="submit"
+    />
   </div>
 </Dialog>

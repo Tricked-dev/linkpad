@@ -20,6 +20,8 @@ pub enum SendMessages {
 pub enum ReceiveMessages {
     UpsertIcon { data: Icon },
     UpdatePanels { data: Vec<serde_json::Value> },
+    Click { data: Uuid },
+    LongClick { data: Uuid },
 }
 
 #[derive(Debug, Clone)]
