@@ -2,16 +2,16 @@ import { upsertIcon } from "./icons.svelte";
 
 export type State = "OPEN" | "CLOSED";
 
-interface WsInfo {
-  instance?: WebSocket;
-  connect(): Promise<void>;
-  send(type: string, data: any, params?: any): Promise<void>;
-  get state(): State;
-  on: {
-    data: (data: any) => unknown;
-    iconData: (data: any) => unknown;
-  };
-}
+// interface WsInfo {
+//   instance?: WebSocket;
+//   connect(): Promise<void>;
+//   send(type: string, data: any, params?: any): Promise<void>;
+//   get state(): State;
+//   on: {
+//     data: (data: any) => unknown;
+//     iconData: (data: any) => unknown;
+//   };
+// }
 
 const b64toBlob = (b64Data: string, contentType = "", sliceSize = 512) => {
   const byteCharacters = atob(b64Data);
@@ -35,8 +35,8 @@ const b64toBlob = (b64Data: string, contentType = "", sliceSize = 512) => {
 
 let state = $state<State>("CLOSED");
 
-export const ws: WsInfo = {
-  instance: undefined,
+export const ws = {
+  instance: undefined as WebSocket | undefined,
   get state() {
     return state;
   },
@@ -64,19 +64,19 @@ export const ws: WsInfo = {
       upsertIcon(event.data.id, url);
     };
 
-    return new Promise((res) => {
+    return new Promise<void>((res) => {
       socket.addEventListener("open", () => {
         state = "OPEN";
         res();
       });
     });
   },
-  async send(type: string, data: any, params: any) {
+  async send(type: string, data: any, params: any = {}) {
     if (this.instance?.readyState == WebSocket.CLOSED) await this.connect();
     ws.instance?.send(JSON.stringify({ type, data, ...params }));
   },
   on: {
-    data: () => {},
-    iconData: () => {},
+    data: (data: any) => {},
+    iconData: (data: any) => {},
   },
 };

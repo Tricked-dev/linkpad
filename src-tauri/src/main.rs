@@ -81,8 +81,8 @@ impl<'de, const V: u8> Deserialize<'de> for ButtonType<V> {
 }
 
 fn main() -> color_eyre::Result<()> {
-    thread::spawn(rocky::main);
-    tauri::Builder::default().run(tauri::generate_context!())?;
+    thread::spawn(rocky::main).join();
+    // tauri::Builder::default().run(tauri::generate_context!())?;
 
     Ok(())
 }
@@ -172,6 +172,12 @@ mod rocky {
                                     ))
                                     .await
                                     .unwrap();
+                            }
+                            ReceiveMessages::Click { data } => {
+                                println!("Hello World");
+                            }
+                            ReceiveMessages::LongClick { data } => {
+                                println!("Hello World Long Click");
                             }
                         }
                     }

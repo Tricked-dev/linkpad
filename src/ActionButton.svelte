@@ -2,6 +2,7 @@
   import { crossfade, fade, fly, blur, scale } from "svelte/transition";
   import { DisplayType } from "./types";
   import { getIcon } from "./icons.svelte";
+  import { ws } from "./ws.svelte";
 
   let {
     data,
@@ -49,6 +50,9 @@
   bind:this={container}
   class="rounded-24px bg-surface-200/30 backdrop-blur-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center overflow-hidden flex [container-type:inline-size]"
   id="{data.id}-btn"
+  onclick={() => {
+    ws.send("Click", data.id);
+  }}
 >
   {#if edit}<div
       onclick={onEdit}
