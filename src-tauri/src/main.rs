@@ -13,6 +13,7 @@ use uuid::Uuid;
 #[serde(tag = "type")]
 pub enum SendMessages {
     Data { data: Vec<serde_json::Value> },
+    Actions { data: Vec<serde_json::Value> },
     IconData { data: Icon },
 }
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,8 +21,8 @@ pub enum SendMessages {
 pub enum ReceiveMessages {
     UpsertIcon { data: Icon },
     UpdatePanels { data: Vec<serde_json::Value> },
-    Click { data: Uuid },
-    LongClick { data: Uuid },
+    Click { data: String },
+    LongClick { data: String },
 }
 
 #[derive(Debug, Clone)]
@@ -109,6 +110,7 @@ mod rocky {
 
     #[get("/connect")]
     fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
+        use actions::load_modules;
         use rocket::futures::{SinkExt, StreamExt};
 
         let mut library = LibraryInfo {
@@ -133,12 +135,32 @@ mod rocky {
 
         ws.channel(move |mut stream| {
             Box::pin(async move {
+                let modules = load_modules(dirs::config_dir().unwrap().join("modules")).unwrap();
+                let actions = modules
+                    .modules
+                    .iter()
+                    .map(|m| {
+                        json! ({
+                            "id":m.0,
+                            "name": m.1.name()
+                        })
+                    })
+                    .collect::<Vec<serde_json::Value>>();
+
                 stream
                     .send(Message::Text(
                         serde_json::to_string_pretty(&SendMessages::Data {
                             data: library.panels.clone(),
                         })
                         .unwrap(),
+                    ))
+                    .await
+                    .unwrap();
+
+                stream
+                    .send(Message::Text(
+                        serde_json::to_string_pretty(&SendMessages::Actions { data: actions })
+                            .unwrap(),
                     ))
                     .await
                     .unwrap();
@@ -175,9 +197,21 @@ mod rocky {
                             }
                             ReceiveMessages::Click { data } => {
                                 println!("Hello World");
+                                modules
+                                    .modules
+                                    .get(&data)
+                                    .unwrap()
+                                    .on_click(&modules.lua)
+                                    .unwrap();
                             }
                             ReceiveMessages::LongClick { data } => {
                                 println!("Hello World Long Click");
+                                modules
+                                    .modules
+                                    .get(&data)
+                                    .unwrap()
+                                    .on_long_click(&modules.lua)
+                                    .unwrap();
                             }
                         }
                     }

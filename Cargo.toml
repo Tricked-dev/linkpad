@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["actions", "./src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["trickeddev <tricked@tricked.dev"]
+documentation = "https://a2m8.tricked.dev"
+license = "MPL-2.0"
+repository = "https://github.com/a2m8-app/a2m8"

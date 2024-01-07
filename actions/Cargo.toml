@@ -1,0 +1,94 @@
+[package]
+name = "a2m8-lib"
+version = { workspace = true }
+edition = "2021"
+authors = { workspace = true }
+documentation = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = [
+    "audio",
+    "clipboard",
+    "command",
+    "displays",
+    "notify",
+    "events",
+    "network",
+    "open"
+]
+audio = ["rodio"]
+clipboard = ["cli-clipboard", "clipboard-ext"]
+command = ["os_pipe", "deno_task_shell"]
+displays = ["screenshots"]
+notify = ["notify-rust"]
+events = ["rdev"]
+network = ["reqwest"]
+open = ["opener"]
+
+[dependencies]
+# audio
+rodio = { version = "0.17", optional = true }
+# clipboard
+cli-clipboard = { version = "0.4", optional = true }
+clipboard-ext = { version = "0.2", optional = true }
+# command
+deno_task_shell = { version = "0.8.2", features = [
+    "serde",
+    "serialization"
+], git = "https://github.com/Tricked-dev/deno_task_shell", rev = "59e72b67566444152a0fbe963235424d8b52c954", optional = true }
+os_pipe = { version = "1", optional = true }
+# display
+screenshots = { version = "0", optional = true }
+# events
+rdev = { version = "0.5", features = [
+    "serde",
+    "serialize",
+    "unstable_grab"
+], optional = true }
+# notify
+notify-rust = { version = "4", optional = true, default-features = false, features = ["d"
+] }
+# network
+reqwest = { version = "0.11", optional = true }
+# open
+opener = { version = "0.5", optional = true }
+# misc
+once_cell = { version = "1", features = ["parking_lot"] }
+rust-embed = "6"
+tokio-util = { version = "0.7.4" }
+appfinder = { version = "0.1.1" }
+anyhow = { version = "1.0.68", features = ["backtrace"] }
+uuid = { version = "1.2.2", features = ["serde", "v6"] }
+tokio = { version = "1.24.1", features = [
+    "rt",
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "parking_lot",
+    "time",
+    "fs"
+] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", features = [
+    "env-filter",
+    "parking_lot"
+] }
+mlua = { version = "0.8", features = [
+    "lua54",
+    "vendored",
+    "parking_lot",
+    "async",
+    "serde",
+    "serialize",
+    "mlua_derive",
+    "macros",
+    "send"
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tl = { git = "https://github.com/a2m8-app/tl" }
+walkdir = "2.4.0"
+color-eyre = "0.6.2"
