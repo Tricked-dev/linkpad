@@ -34,9 +34,11 @@ const b64toBlob = (b64Data: string, contentType = "", sliceSize = 512) => {
 };
 
 let state = $state<State>("CLOSED");
+let actions = $state([]);
 
 export const ws = {
   instance: undefined as WebSocket | undefined,
+  actions: actions,
   get state() {
     return state;
   },
@@ -51,6 +53,8 @@ export const ws = {
       } else if (res.type == "IconData") {
         console.log("IconData");
         ws.on.iconData(res);
+      } else if (res.type == "Actions") {
+        ws.on.actions(res);
       }
     };
     socket.addEventListener("close", () => {
@@ -78,5 +82,8 @@ export const ws = {
   on: {
     data: (data: any) => {},
     iconData: (data: any) => {},
+    actions: (data: any) => {
+      ws.actions = data.data;
+    },
   },
 };

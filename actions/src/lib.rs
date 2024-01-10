@@ -2,12 +2,11 @@ pub(crate) mod assets;
 pub(crate) mod modules;
 pub(crate) mod private;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use mlua::{Function, Lua, RegistryKey};
-pub use modules::require;
+use mlua::{Function, Lua, RegistryKey, Table};
 
 pub use modules::*;
 use walkdir::WalkDir;
@@ -50,10 +49,28 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
     let lua = Lua::new();
 
     let globals = lua.globals();
-    let lua_require = lua.create_function(require)?;
-    globals.set("require_ref", globals.get::<_, mlua::Function>("require")?)?;
-    globals.set("require", lua_require)?;
-    globals.set("__INTERNAL_LOADED_MODULES", lua.create_table()?)?;
+
+    let require: Function = globals.get("require")?;
+
+    let package: mlua::Table = globals.get("package")?;
+    package
+        .get::<_, mlua::Table>("searchers")?
+        .push(lua.create_function(search_wrapper)?)?;
+
+    fn add_to_path(globals: &Table, path: &Path) -> color_eyre::Result<()> {
+        let package: mlua::Table = globals.get("package")?;
+        package.set(
+            "path",
+            format!(
+                "{};{p}/?.lua;{p}/?/init.lua;{p}/?",
+                package.get::<_, String>("path")?,
+                p = path.to_string_lossy()
+            ),
+        )?;
+        Ok(())
+    }
+
+    add_to_path(&globals, &folder)?;
 
     fn lua_runnable(name: &OsStr) -> bool {
         let str_name = name.to_str().unwrap();
@@ -63,8 +80,25 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
 
     let mut modules = HashMap::<String, Module>::new();
 
-    for entry in WalkDir::new(folder).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path().as_os_str().to_string_lossy().to_string();
+    let mut search_folders: HashSet<PathBuf> = HashSet::new();
+
+    for entry in WalkDir::new(&folder).into_iter().filter_map(|e| e.ok()) {
+        if let Some(parent) = entry.path().parent() {
+            if !search_folders.contains(parent) {
+                add_to_path(&globals, parent)?;
+                search_folders.insert(parent.to_path_buf());
+            }
+        }
+
+        if entry.depth() == 0 {
+            continue;
+        }
+
+        let path = entry.path().to_string_lossy()[folder.to_string_lossy().len() + 1..]
+            .to_string()
+            .replace(".lua", "");
+
+        println!("Searching {path}");
 
         let id = match entry.depth() {
             1 => {
@@ -75,8 +109,8 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
                 }
             }
             _ => {
-                if entry.file_name() == OsStr::new("main.lua")
-                    || entry.file_name() == OsStr::new("main.tl")
+                if entry.file_name() == OsStr::new("lua.lua")
+                    || entry.file_name() == OsStr::new("lua.tl")
                 {
                     Some(
                         entry
@@ -95,7 +129,9 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
         };
 
         if let Some(id) = id {
-            let module = require(&lua, path)?;
+            println!("LOading {path}");
+
+            let module: Table = require.call(path)?;
             let name: String = module.get("name")?;
             let on_click: Function = module.get("on_click")?;
             let on_long_click: Function = module.get("on_click")?;
@@ -111,7 +147,9 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
 
     //we need to drop globals so that lua can be passed to the struct
 
+    drop(require);
     drop(globals);
+    drop(package);
 
     Ok(LoadContext { lua, modules })
 }

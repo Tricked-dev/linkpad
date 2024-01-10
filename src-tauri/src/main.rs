@@ -135,7 +135,10 @@ mod rocky {
 
         ws.channel(move |mut stream| {
             Box::pin(async move {
-                let modules = load_modules(dirs::config_dir().unwrap().join("modules")).unwrap();
+                let dir = dirs::config_dir().unwrap().join("linkpad");
+                let modules =
+                    load_modules(dirs::config_dir().unwrap().join("linkpad").join("modules"))
+                        .unwrap();
                 let actions = modules
                     .modules
                     .iter()

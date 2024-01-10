@@ -119,7 +119,12 @@
     {/if}
     <span class="text-xl font-bold"> Select Action </span>
     <div class="p-2">
-      <Button text="Browse" />
+      <Button
+        text="Browse"
+        onclick={() => {
+          console.log(ws.actions);
+        }}
+      />
       <span> Increase Volume </span>
     </div>
     <div class="flex justify-center items-center mt-10">

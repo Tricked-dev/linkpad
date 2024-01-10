@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use mlua::{Function, Lua, Table};
+use mlua::{Function, Lua, Table, Value::Nil};
 use rust_embed::RustEmbed;
 
 #[cfg(feature = "audio")]
@@ -47,8 +47,8 @@ impl StdFiles {
     }
 }
 
-pub fn require(lua: &Lua, module: String) -> mlua::Result<Table> {
-    let loaded_modules = lua.globals().get::<_, Table>("__INTERNAL_LOADED_MODULES")?;
+pub fn search(lua: &Lua, module: String) -> mlua::Result<Table> {
+    let loaded_modules: Table = lua.globals().get::<_, Table>("package")?.get("loaded")?;
 
     if let Ok(table) = loaded_modules.get::<_, Table>(&*module) {
         return Ok(table);
@@ -69,7 +69,6 @@ pub fn require(lua: &Lua, module: String) -> mlua::Result<Table> {
         Ok::<_, mlua::Error>(table)
     };
 
-    let globals = lua.globals();
     //TODO(everyone): keep this sorted alphabetically
     #[rustfmt::skip]
     let result: Table = match module.as_str() {
@@ -106,13 +105,30 @@ pub fn require(lua: &Lua, module: String) -> mlua::Result<Table> {
 
         _ => {
             /* early return so other modules can be cached */
-            return globals
-                .get::<_, mlua::Function>("require_ref")?
-                .call(module)
-                ;
+            return Err(mlua::Error::RuntimeError(format!(
+                "module {module} not found"
+            )))?;
         }
     };
 
     loaded_modules.set(module, result.clone())?;
     Ok(result)
+}
+
+pub fn search_wrapper(lua: &Lua, module: String) -> mlua::Result<mlua::Value> {
+    println!("Searching {module}");
+    let result = search(lua, module);
+
+    match result {
+        Ok(table) => {
+            //TODO: be smarter and find otu how to this better!
+            let reg = lua.create_registry_value(table)?;
+            let fun = lua.create_function(move |lua, _args: ()| {
+                let table = lua.registry_value::<Table>(&reg)?;
+                Ok(table.clone())
+            })?;
+            Ok(mlua::Value::Function(fun))
+        }
+        Err(_) => Ok(mlua::Value::Nil),
+    }
 }
