@@ -90,6 +90,29 @@
 
 <Dialog bind:open title="Edit Button! ">
   <div class="h-110 w-100">
+    <span class="text-xl font-bold"> Select Action </span>
+    <div class="p-2">
+      <Button
+        text="Browse"
+        onclick={() => {
+          console.log(ws.actions);
+        }}
+      />
+      {#each ws.actions as action}
+        <Button
+          text={action.name}
+          onclick={async () => {
+            data.action = action.id;
+            await ws.save();
+            await ws.send("GetIcon", action.id, {
+              id: data.id,
+            });
+          }}
+        />
+      {/each}
+      <span> Increase Volume </span>
+    </div>
+
     <div class="flex gap-2">
       <span>ICON</span>
       <Toggle bind:checked />
@@ -117,16 +140,7 @@
         <Button text="Select Icon" onclick={selectIcon} />
       </div>
     {/if}
-    <span class="text-xl font-bold"> Select Action </span>
-    <div class="p-2">
-      <Button
-        text="Browse"
-        onclick={() => {
-          console.log(ws.actions);
-        }}
-      />
-      <span> Increase Volume </span>
-    </div>
+
     <div class="flex justify-center items-center mt-10">
       <ActionButton {data} onEdit={() => {}} preview edit={false} />
     </div>

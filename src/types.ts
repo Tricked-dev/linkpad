@@ -1,6 +1,7 @@
 export const enum DisplayType {
   ICON = 0,
   TEXT = 1,
+  AUTO = 2,
 }
 
 export type TextButton = {
@@ -19,6 +20,7 @@ export type AnyButton = Omit<
   "type"
 > & {
   type: DisplayType;
+  action: string;
   id: string;
 };
 

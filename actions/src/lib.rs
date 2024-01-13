@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use mlua::{Function, Lua, RegistryKey, Table};
 
 pub use modules::*;
+use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 pub struct LoadContext {
@@ -21,6 +22,21 @@ pub struct Module {
     path: PathBuf,
     on_click: RegistryKey,
     on_long_click: RegistryKey,
+    get_icon: RegistryKey,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum IconResult {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "nochange")]
+    NoChange,
+    #[serde(rename = "base64")]
+    Base64 { data: Vec<u8>, content_type: String },
+    #[serde(rename = "path")]
+    Path { path: PathBuf },
+    #[serde(rename = "url")]
+    Url { url: String },
 }
 
 impl Module {
@@ -31,17 +47,20 @@ impl Module {
         &self.path
     }
     pub fn on_click<'a>(&'a self, lua: &'a Lua) -> color_eyre::Result<()> {
-        lua.registry_value::<Function>(&self.on_click)
-            .unwrap()
-            .call(())?;
+        lua.registry_value::<Function>(&self.on_click)?.call(())?;
         Ok(())
     }
 
     pub fn on_long_click<'a>(&'a self, lua: &'a Lua) -> color_eyre::Result<()> {
-        lua.registry_value::<Function>(&self.on_long_click)
-            .unwrap()
+        lua.registry_value::<Function>(&self.on_long_click)?
             .call(())?;
         Ok(())
+    }
+
+    pub fn icon(&self, lua: &Lua) -> color_eyre::Result<IconResult> {
+        let res: Table = lua.registry_value::<Function>(&self.get_icon)?.call(())?;
+        //TODO improve this
+        Ok(serde_json::from_str(&serde_json::to_string(&res)?)?)
     }
 }
 
@@ -83,15 +102,15 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
     let mut search_folders: HashSet<PathBuf> = HashSet::new();
 
     for entry in WalkDir::new(&folder).into_iter().filter_map(|e| e.ok()) {
+        if entry.depth() == 0 {
+            continue;
+        }
+
         if let Some(parent) = entry.path().parent() {
             if !search_folders.contains(parent) {
                 add_to_path(&globals, parent)?;
                 search_folders.insert(parent.to_path_buf());
             }
-        }
-
-        if entry.depth() == 0 {
-            continue;
         }
 
         let path = entry.path().to_string_lossy()[folder.to_string_lossy().len() + 1..]
@@ -135,11 +154,13 @@ pub fn load_modules(folder: PathBuf) -> color_eyre::Result<LoadContext> {
             let name: String = module.get("name")?;
             let on_click: Function = module.get("on_click")?;
             let on_long_click: Function = module.get("on_click")?;
+            let icon: Function = module.get("get_icon")?;
             let data = Module {
                 name,
                 path: entry.path().to_path_buf(),
                 on_click: lua.create_registry_value(on_click)?,
                 on_long_click: lua.create_registry_value(on_long_click)?,
+                get_icon: lua.create_registry_value(icon)?,
             };
             modules.insert(id, data);
         }

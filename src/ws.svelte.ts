@@ -1,3 +1,4 @@
+import type { Info } from "./types";
 import { upsertIcon } from "./icons.svelte";
 
 export type State = "OPEN" | "CLOSED";
@@ -34,11 +35,15 @@ const b64toBlob = (b64Data: string, contentType = "", sliceSize = 512) => {
 };
 
 let state = $state<State>("CLOSED");
-let actions = $state([]);
+let actions = $state<{ name: string; id: string }[]>([]);
+let info = $state<Info>([]);
 
 export const ws = {
   instance: undefined as WebSocket | undefined,
   actions: actions,
+  get info() {
+    return info;
+  },
   get state() {
     return state;
   },
@@ -79,8 +84,13 @@ export const ws = {
     if (this.instance?.readyState == WebSocket.CLOSED) await this.connect();
     ws.instance?.send(JSON.stringify({ type, data, ...params }));
   },
+  async save() {
+    ws.send("UpdatePanels", info);
+  },
   on: {
-    data: (data: any) => {},
+    data: (data: any) => {
+      info = data.data;
+    },
     iconData: (data: any) => {},
     actions: (data: any) => {
       ws.actions = data.data;

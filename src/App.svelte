@@ -81,6 +81,7 @@
               open = true;
               buttonOption = {
                 type: DisplayType.ICON,
+                action: "123",
                 id: randomUUID(),
               };
               onCancel = () => {};

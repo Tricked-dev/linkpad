@@ -51,7 +51,7 @@
   class="rounded-24px bg-surface-200/30 backdrop-blur-4 w-160px h-160px font-bold text-white hover:bg-surface-200/50 duration-200 text-center overflow-hidden flex [container-type:inline-size]"
   id="{data.id}-btn"
   onclick={() => {
-    ws.send("Click", data.id);
+    ws.send("Click", data.action);
   }}
 >
   {#if edit}<div
@@ -81,7 +81,7 @@
         {/if}
       </div>
     {/key}
-  {:else if data.type === DisplayType.ICON}
+  {:else if data.type === DisplayType.ICON || data.type === DisplayType.AUTO}
     <img
       in:scale={{ duration: preview ? 0 : 500, delay: preview ? 0 : 200 }}
       src={getIcon(data.id)?.url}

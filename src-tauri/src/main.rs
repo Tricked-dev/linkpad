@@ -4,8 +4,6 @@
 use std::thread;
 
 use base64::{engine::general_purpose, Engine as _};
-use color_eyre::owo_colors::colors::xterm::LightSilverChalice;
-use rocket::{futures::TryFutureExt, get, routes};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
@@ -23,6 +21,7 @@ pub enum ReceiveMessages {
     UpdatePanels { data: Vec<serde_json::Value> },
     Click { data: String },
     LongClick { data: String },
+    GetIcon { data: String, id: Uuid },
 }
 
 #[derive(Debug, Clone)]
@@ -100,13 +99,13 @@ pub struct Icon {
 }
 
 mod rocky {
-    use color_eyre::owo_colors::OwoColorize;
+    use actions::IconResult;
     use rocket::{futures::stream::iter, get, launch, routes};
     use serde_json::json;
     use uuid::Uuid;
     use ws::{stream, Message};
 
-    use crate::{Base64, LibraryInfo, ReceiveMessages, SendMessages};
+    use crate::{Base64, Icon, LibraryInfo, ReceiveMessages, SendMessages};
 
     #[get("/connect")]
     fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
@@ -135,7 +134,6 @@ mod rocky {
 
         ws.channel(move |mut stream| {
             Box::pin(async move {
-                let dir = dirs::config_dir().unwrap().join("linkpad");
                 let modules =
                     load_modules(dirs::config_dir().unwrap().join("linkpad").join("modules"))
                         .unwrap();
@@ -144,7 +142,7 @@ mod rocky {
                     .iter()
                     .map(|m| {
                         json! ({
-                            "id":m.0,
+                            "id": m.0,
                             "name": m.1.name()
                         })
                     })
@@ -215,6 +213,48 @@ mod rocky {
                                     .unwrap()
                                     .on_long_click(&modules.lua)
                                     .unwrap();
+                            }
+                            ReceiveMessages::GetIcon { data, id } => {
+                                let data = modules
+                                    .modules
+                                    .get(&data)
+                                    .unwrap()
+                                    .icon(&modules.lua)
+                                    .unwrap();
+
+                                let res = match data {
+                                    IconResult::None | IconResult::NoChange => None,
+                                    IconResult::Url { url } => {
+                                        let res = reqwest::get(url).await.unwrap();
+                                        let c_type = res
+                                            .headers()
+                                            .get("content-type")
+                                            .unwrap()
+                                            .to_str()
+                                            .unwrap()
+                                            .to_string();
+                                        Some((res.bytes().await.unwrap().to_vec(), c_type))
+                                    }
+                                    IconResult::Base64 { data, content_type } => {
+                                        Some((data, content_type))
+                                    }
+                                    IconResult::Path { path } => todo!(),
+                                };
+                                if let Some(icon) = res {
+                                    stream
+                                        .send(Message::Text(
+                                            serde_json::to_string_pretty(&SendMessages::IconData {
+                                                data: Icon {
+                                                    id,
+                                                    data: Base64(icon.0),
+                                                    content_type: icon.1,
+                                                },
+                                            })
+                                            .unwrap(),
+                                        ))
+                                        .await
+                                        .unwrap();
+                                }
                             }
                         }
                     }
