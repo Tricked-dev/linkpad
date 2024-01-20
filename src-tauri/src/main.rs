@@ -86,7 +86,7 @@ fn main() -> color_eyre::Result<()> {
 
     Ok(())
 }
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct LibraryInfo {
     panels: Vec<serde_json::Value>,
     icons: Vec<Icon>,
@@ -99,6 +99,8 @@ pub struct Icon {
 }
 
 mod rocky {
+    use std::fs;
+
     use actions::IconResult;
     use rocket::{futures::stream::iter, get, launch, routes};
     use serde_json::json;
@@ -112,7 +114,10 @@ mod rocky {
         use actions::load_modules;
         use rocket::futures::{SinkExt, StreamExt};
 
-        let mut library = LibraryInfo {
+        let app_dir = dirs::config_dir().unwrap().join("linkpad");
+        fs::create_dir_all(&app_dir).unwrap();
+
+        let default_lib = LibraryInfo {
             panels: vec![json!({
                 "buttons": [
                     [
@@ -132,11 +137,16 @@ mod rocky {
             icons: vec![],
         };
 
+        let mut library = match fs::File::open(app_dir.join("libraries.json")) {
+            Ok(file) => serde_json::from_reader(file).unwrap_or(default_lib),
+            _ => default_lib,
+        };
+
         ws.channel(move |mut stream| {
             Box::pin(async move {
-                let modules =
-                    load_modules(dirs::config_dir().unwrap().join("linkpad").join("modules"))
-                        .unwrap();
+                fs::create_dir_all(app_dir.join("modules")).unwrap();
+                let modules = load_modules(app_dir.join("modules")).unwrap();
+
                 let actions = modules
                     .modules
                     .iter()
@@ -259,6 +269,11 @@ mod rocky {
                         }
                     }
 
+                    fs::write(
+                        app_dir.join("libraries.json"),
+                        serde_json::to_string_pretty(&library).unwrap(),
+                    )
+                    .unwrap();
                     dbg!(&library);
                 }
 

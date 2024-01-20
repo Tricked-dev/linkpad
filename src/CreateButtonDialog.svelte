@@ -92,12 +92,12 @@
   <div class="h-110 w-100">
     <span class="text-xl font-bold"> Select Action </span>
     <div class="p-2">
-      <Button
+      <!-- <Button
         text="Browse"
         onclick={() => {
           console.log(ws.actions);
         }}
-      />
+      /> -->
       {#each ws.actions as action}
         <Button
           text={action.name}
@@ -110,9 +110,9 @@
           }}
         />
       {/each}
-      <span> Increase Volume </span>
+      <span> {ws.actions.find((x) => x.id == data.action)?.name} </span>
     </div>
-
+    }
     <div class="flex gap-2">
       <span>ICON</span>
       <Toggle bind:checked />
