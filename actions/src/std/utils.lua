@@ -27,6 +27,21 @@ function module.loop(fun, delay)
     end
 end
 
+---comment
+---@param inputstr string
+---@param sep string
+---@return table
+function module.split(inputstr, sep)
+    if sep == nil then
+        sep = "%s"
+    end
+    local t = {}
+    for str in string.gmatch(inputstr, "([^" .. sep .. "]+)") do
+        table.insert(t, str)
+    end
+    return t
+end
+
 function module.tprint(tbl, indent)
     if not indent then indent = 0 end
     for k, value in pairs(tbl) do

@@ -15,10 +15,7 @@
 
   const edit = true;
 
-  let info: Info | undefined = $state();
-  let active: string | undefined = $state();
-
-  let activeBoard = $derived(info?.find((x) => x.id == active));
+  let activeBoard = $derived(ws.info?.find((x) => x.id == ws.active));
 
   let open = $state(false);
 
@@ -27,20 +24,17 @@
 
   let buttonOption: AnyButton = $state({
     type: DisplayType.ICON,
+    action: "",
     id: "123",
   });
 
   onMount(() => {
     ws.connect();
-    ws.on.data = (res) => {
-      info = res.data;
-      active = info![0].id;
-    };
   });
 
   $effect(() => {
-    if (ws?.state !== "CLOSED" && info) {
-      ws?.send("UpdatePanels", info);
+    if (ws?.state !== "CLOSED" && ws.info) {
+      ws?.save();
     }
   });
 </script>

@@ -37,6 +37,7 @@ const b64toBlob = (b64Data: string, contentType = "", sliceSize = 512) => {
 let state = $state<State>("CLOSED");
 let actions = $state<{ name: string; id: string }[]>([]);
 let info = $state<Info>([]);
+let active = $state<string>("");
 
 export const ws = {
   instance: undefined as WebSocket | undefined,
@@ -46,6 +47,9 @@ export const ws = {
   },
   get state() {
     return state;
+  },
+  get active() {
+    return active;
   },
   async connect() {
     const socket = new WebSocket("ws://127.0.0.1:8000/connect");
@@ -90,6 +94,8 @@ export const ws = {
   on: {
     data: (data: any) => {
       info = data.data;
+      // console.log("info", { ...info });
+      active = data.data[0].id;
     },
     iconData: (data: any) => {},
     actions: (data: any) => {

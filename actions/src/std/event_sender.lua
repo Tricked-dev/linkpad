@@ -1,7 +1,6 @@
 local events = require("event_sender_internal")
 local u = require("utils")
 local sim = events.simulate
-
 ---
 ---@param word string
 function events.type(word)
@@ -66,6 +65,57 @@ function events.click(key, delay)
     sim(events.create_button_press(key or "left"))
     u.sleep(delay or 0.01)
     sim(events.create_button_release(key or "left"))
+end
+
+--- @param shortcut  string
+function events.keybind(shortcut)
+    local lc = string.lower(shortcut)
+    local alt = string.find(lc, "alt");
+    local shift = string.find(lc, "shift");
+    local ctrl = string.find(lc, "ctrl");
+    local super = string.find(lc, "super") or string.find(lc, "win") or string.find(lc, "windows") or
+        string.find(lc, "cmd");
+    local key = table.remove(u.split(shortcut, " "))
+
+    if alt then
+        sim(events.create_key_press("Alt"))
+    end
+
+    if shift then
+        sim(events.create_key_press("ShiftLeft"))
+    end
+
+    if ctrl then
+        sim(events.create_key_press("ControlLeft"))
+    end
+
+    if super then
+        sim(events.create_key_press("MetaLeft"))
+    end
+
+    if string.len(key) == 1 then
+        sim(events.create_key_press("Key" + string.upper(key)))
+        sim(events.create_key_release("Key" + string.upper(key)))
+    else
+        sim(events.create_key_press(key))
+        sim(events.create_key_release(key))
+    end
+
+    if alt then
+        sim(events.create_key_release("Alt"))
+    end
+
+    if shift then
+        sim(events.create_key_release("ShiftLeft"))
+    end
+
+    if ctrl then
+        sim(events.create_key_release("ControlLeft"))
+    end
+
+    if super then
+        sim(events.create_key_release("MetaLeft"))
+    end
 end
 
 return events
