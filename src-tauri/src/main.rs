@@ -81,7 +81,7 @@ impl<'de, const V: u8> Deserialize<'de> for ButtonType<V> {
 }
 
 fn main() -> color_eyre::Result<()> {
-    thread::spawn(rocky::main).join();
+    thread::spawn(rocky::main).join().unwrap();
     // tauri::Builder::default().run(tauri::generate_context!())?;
 
     Ok(())
@@ -185,7 +185,6 @@ mod rocky {
 
                 while let Some(message) = stream.next().await {
                     if let Ok(t) = message {
-                        dbg!(&t.to_text()?);
                         let msg: ReceiveMessages = serde_json::from_str(t.to_text()?).unwrap();
 
                         match msg {
@@ -274,7 +273,7 @@ mod rocky {
                         serde_json::to_string_pretty(&library).unwrap(),
                     )
                     .unwrap();
-                    dbg!(&library);
+                    // dbg!(&library);
                 }
 
                 Ok(())

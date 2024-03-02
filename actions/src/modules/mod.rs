@@ -82,6 +82,7 @@ pub fn search(lua: &Lua, module: String) -> mlua::Result<Table> {
 #[cfg(feature = "events")]      "event_sender" => load_std()?,
 /* always-on */                 "json" => json::init(lua)?,
 /* always-on */                 "kv" => load_std()?,
+/* always-on */                 "pprint" => load_std()?,
 /* always-on */                 "preload" => load_std()?,
 /* always-on */                 "log" => log::init(lua)?,
 #[cfg(feature = "network")]     "network" => network::init(lua)?,

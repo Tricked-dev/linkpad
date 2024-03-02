@@ -57,7 +57,9 @@
           <div in:fly={{ x: -100, duration: 500 }}>
             <ActionButton
               data={item}
-              onEdit={() => {
+              onEdit={(ev) => {
+                // click fires otherwise!
+                ev.stopPropagation();
                 open = true;
                 buttonOption = { ...item };
                 onCancel = () => {};

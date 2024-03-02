@@ -112,7 +112,6 @@
       {/each}
       <span> {ws.actions.find((x) => x.id == data.action)?.name} </span>
     </div>
-    }
     <div class="flex gap-2">
       <span>ICON</span>
       <Toggle bind:checked />

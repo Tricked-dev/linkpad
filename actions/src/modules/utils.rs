@@ -9,7 +9,8 @@ use super::command;
 
 pub fn init(lua: &Lua) -> mlua::Result<mlua::Table> {
     create_body! (lua,
-        "sleep" => lua.create_async_function(sleep)?,
+        "sleep" => lua.create_function(sleep)?,
+        "sleep_async" => lua.create_async_function(sleep_async)?,
         "performance" => Performance::new(),
         "open_app" => lua.create_async_function(open_app)?,
         "find_app" => lua.create_function(find_app)?
@@ -21,7 +22,9 @@ fn find_app(_: &Lua, appname: String) -> mlua::Result<String> {
     if let Some(app) = app {
         Ok(appfinder::remove_arguments(&app))
     } else {
-        Err(LuaError::RuntimeError(format!("Could not find app {appname}")))
+        Err(LuaError::RuntimeError(format!(
+            "Could not find app {appname}"
+        )))
     }
 }
 
@@ -33,8 +36,13 @@ async fn open_app(lua: &Lua, (app, cwd): (String, Option<String>)) -> mlua::Resu
     Ok(())
 }
 
-pub async fn sleep(_: &Lua, time: f64) -> Result<(), LuaError> {
-    time::sleep(time::Duration::from_millis((time * 1000.0) as u64)).await;
+pub async fn sleep_async(_: &Lua, time: f64) -> Result<(), LuaError> {
+    time::sleep(time::Duration::from_millis((time) as u64)).await;
+    Ok(())
+}
+
+pub fn sleep(_: &Lua, time: f64) -> mlua::Result<()> {
+    std::thread::sleep(std::time::Duration::from_millis((time) as u64));
     Ok(())
 }
 

@@ -12,7 +12,7 @@
   } = $props<{
     data: any;
     edit: boolean;
-    onEdit: () => void;
+    onEdit: (ev: Event) => void;
     preview?: boolean;
   }>();
   let container: HTMLButtonElement | undefined = $state();

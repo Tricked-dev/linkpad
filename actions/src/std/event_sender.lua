@@ -1,6 +1,10 @@
 local events = require("event_sender_internal")
 local u = require("utils")
-local sim = events.simulate
+local pprint = require("pprint")
+local sim = function(args)
+    local res, alt = pcall(events.simulate, args)
+    pprint.pprint(res, alt)
+end
 ---
 ---@param word string
 function events.type(word)
@@ -75,7 +79,9 @@ function events.keybind(shortcut)
     local ctrl = string.find(lc, "ctrl");
     local super = string.find(lc, "super") or string.find(lc, "win") or string.find(lc, "windows") or
         string.find(lc, "cmd");
-    local key = table.remove(u.split(shortcut, " "))
+    local key = table.remove(u.split(table.remove(u.split(shortcut, " ")), "+"))
+
+    pprint.pprint("Key " .. key)
 
     if alt then
         sim(events.create_key_press("Alt"))
@@ -94,10 +100,12 @@ function events.keybind(shortcut)
     end
 
     if string.len(key) == 1 then
-        sim(events.create_key_press("Key" + string.upper(key)))
-        sim(events.create_key_release("Key" + string.upper(key)))
+        sim(events.create_key_press("Key" .. string.upper(key)))
+        u.sleep(100)
+        sim(events.create_key_release("Key" .. string.upper(key)))
     else
         sim(events.create_key_press(key))
+        u.sleep(100)
         sim(events.create_key_release(key))
     end
 
