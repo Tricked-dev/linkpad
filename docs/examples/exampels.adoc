@@ -1,0 +1,9 @@
+= Examples
+
+Tricked <tricked@tricked.dev>
+
+
+[source,lua]
+----
+include::send_notify.lua[]
+----
