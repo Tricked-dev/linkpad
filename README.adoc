@@ -1,1 +1,19 @@
-= Hello World
+= Linkpad
+
+.Example dashboard
+image::./public/preview.png[]
+
+Linkpad is a tool to create a gui for a bunch of "macros" you have defined / or from the presets .
+
+It can be used to:
+
+* Change scenes in obs
+* Pause stream
+* Run keybinds
+* Close currently open application
+* Take screenshots
+* Send notifications
+* Run API requests
+* Open specific applications
+
+All can be done via lua but we provide a bunch of templates that you can use if you dont want to program anything, you can use this application perfectly fine without knowing lua!
